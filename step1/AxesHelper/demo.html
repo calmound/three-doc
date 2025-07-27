@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js AxesHelper 示例</title>
+    <style>
+      body {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module">
+      // 导入 Three.js 核心库
+      import * as THREE from "three";
+      // 导入轨道控制器 (OrbitControls)
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      // 1. 初始化场景
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x111111); // 设置场景背景色为深灰色
+
+      // 2. 初始化相机
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(3, 4, 5); // 设置相机位置
+      camera.lookAt(scene.position); // 相机朝向场景原点
+
+      // 3. 初始化渲染器
+      const renderer = new THREE.WebGLRenderer({ antialias: true }); // 开启抗锯齿
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // 4. 创建一个立方体作为参考物
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshNormalMaterial(); // 使用法向材质，方便观察面朝向
+      const cube = new THREE.Mesh(geometry, material);
+      cube.position.set(1, 0.5, 1); // 将立方体稍微移动，以便观察
+      scene.add(cube);
+
+      // 5. 创建并添加坐标轴辅助器
+      // 创建一个长度为 3 的坐标轴辅助器
+      const axesHelper = new THREE.AxesHelper(3);
+      // 将其添加到场景中
+      scene.add(axesHelper);
+
+      // 6. 添加轨道控制器，允许用户通过鼠标交互
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true; // 启用阻尼效果，使交互更平滑
+
+      // 7. 渲染循环
+      function animate() {
+        requestAnimationFrame(animate);
+
+        controls.update(); // 更新控制器状态
+
+        renderer.render(scene, camera);
+      }
+
+      // 8. 处理窗口大小变化
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // 启动渲染
+      animate();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 交互式光源实验室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <!-- Chosen Palette: Warm Neutrals & Subtle Accents -->
+    <!-- Application Structure Plan: A two-column "lab" layout was chosen. The left column serves as a control panel, allowing users to manipulate light properties with sliders and inputs. The right column is a real-time 3D viewport showing the immediate effects of those changes. This interactive, side-by-side structure directly connects abstract parameters to their visual results, transforming passive reading into active experimentation. This is ideal for the target audience (beginners) to build intuition about how 3D lighting works. Navigation is handled by scrolling through the control panel. -->
+    <!-- Visualization & Content Choices: The core of the report is explaining light parameters. Goal: Compare & Understand. Method: The primary visualization is the Three.js canvas itself. Instead of static charts, the application uses interactive controls (HTML sliders, color pickers) to dynamically update the properties of `PointLight` and `SpotLight` instances within the 3D scene. This provides direct, immediate feedback. For example, the `penumbra` property is linked to a slider, and changing it visually softens the spotlight's edge in real-time. This approach is more effective for teaching spatial concepts than a 2D chart would be. Justification: This design choice provides a direct mapping between a parameter and its visual outcome, which is the most effective way to learn a visual API like Three.js. Library: Three.js for rendering, Vanilla JS for interactivity. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+      }
+      .control-panel {
+        scrollbar-width: thin;
+        scrollbar-color: #9ca3af #f1f5f9;
+      }
+      .control-panel::-webkit-scrollbar {
+        width: 8px;
+      }
+      .control-panel::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      .control-panel::-webkit-scrollbar-thumb {
+        background-color: #9ca3af;
+        border-radius: 10px;
+        border: 2px solid #f1f5f9;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        background: #3b82f6;
+        cursor: pointer;
+        border-radius: 50%;
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        background: #3b82f6;
+        cursor: pointer;
+        border-radius: 50%;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-100 text-slate-800">
+    <div
+      id="app"
+      class="flex flex-col md:flex-row w-screen h-screen overflow-hidden"
+    >
+      <!-- Control Panel -->
+      <div
+        class="control-panel w-full md:w-1/3 lg:w-1/4 h-1/2 md:h-full bg-slate-50 p-4 overflow-y-auto shadow-lg"
+      >
+        <header class="mb-6">
+          <h1 class="text-2xl font-bold text-slate-900">光源实验室</h1>
+          <p class="text-sm text-slate-500 mt-1">
+            实时调整参数，观察三维场景中的光影变化。
+          </p>
+        </header>
+
+        <!-- PointLight Controls -->
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+          <h2 class="text-lg font-semibold text-slate-800 mb-2">
+            点光源 (PointLight)
+          </h2>
+          <p class="text-xs text-slate-600 mb-4">
+            模拟从一个点向所有方向均匀发光的光源，如同一个灯泡。光线强度随距离衰减。
+          </p>
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between items-center text-sm">
+                <label for="pl_enabled" class="font-medium text-slate-700"
+                  >启用光源</label
+                >
+                <input
+                  type="checkbox"
+                  id="pl_enabled"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked
+                />
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between items-center text-sm">
+                <label for="pl_color" class="font-medium text-slate-700"
+                  >颜色</label
+                >
+                <input
+                  type="color"
+                  id="pl_color"
+                  value="#ffffff"
+                  class="p-0.5 h-6 w-10 border border-slate-300 rounded-md"
+                />
+              </div>
+            </div>
+            <div>
+              <label
+                for="pl_intensity"
+                class="block text-sm font-medium text-slate-700"
+                >强度: <span id="pl_intensity_val">2.0</span></label
+              >
+              <input
+                type="range"
+                id="pl_intensity"
+                min="0"
+                max="10"
+                step="0.1"
+                value="2"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+            <div>
+              <label
+                for="pl_distance"
+                class="block text-sm font-medium text-slate-700"
+                >距离: <span id="pl_distance_val">15.0</span></label
+              >
+              <input
+                type="range"
+                id="pl_distance"
+                min="0"
+                max="30"
+                step="0.5"
+                value="15"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+            <div>
+              <label
+                for="pl_decay"
+                class="block text-sm font-medium text-slate-700"
+                >衰减率: <span id="pl_decay_val">2.0</span></label
+              >
+              <input
+                type="range"
+                id="pl_decay"
+                min="0"
+                max="2"
+                step="0.1"
+                value="2"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700"
+                >位置 Y: <span id="pl_pos_y_val">3.0</span></label
+              >
+              <input
+                type="range"
+                id="pl_pos_y"
+                min="-5"
+                max="10"
+                step="0.1"
+                value="3"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- SpotLight Controls -->
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h2 class="text-lg font-semibold text-slate-800 mb-2">
+            聚光灯 (SpotLight)
+          </h2>
+          <p class="text-xs text-slate-600 mb-4">
+            从一个点沿特定方向发射锥形光束，类似手电筒。可精确控制光照区域和边缘柔和度。
+          </p>
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between items-center text-sm">
+                <label for="sl_enabled" class="font-medium text-slate-700"
+                  >启用光源</label
+                >
+                <input
+                  type="checkbox"
+                  id="sl_enabled"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked
+                />
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between items-center text-sm">
+                <label for="sl_color" class="font-medium text-slate-700"
+                  >颜色</label
+                >
+                <input
+                  type="color"
+                  id="sl_color"
+                  value="#ffcc00"
+                  class="p-0.5 h-6 w-10 border border-slate-300 rounded-md"
+                />
+              </div>
+            </div>
+            <div>
+              <label
+                for="sl_intensity"
+                class="block text-sm font-medium text-slate-700"
+                >强度: <span id="sl_intensity_val">10.0</span></label
+              >
+              <input
+                type="range"
+                id="sl_intensity"
+                min="0"
+                max="50"
+                step="1"
+                value="10"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+            <div>
+              <label
+                for="sl_angle"
+                class="block text-sm font-medium text-slate-700"
+                >角度: <span id="sl_angle_val">22.5</span>°</label
+              >
+              <input
+                type="range"
+                id="sl_angle"
+                min="1"
+                max="90"
+                step="0.5"
+                value="22.5"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+            <div>
+              <label
+                for="sl_penumbra"
+                class="block text-sm font-medium text-slate-700"
+                >半影: <span id="sl_penumbra_val">0.2</span></label
+              >
+              <input
+                type="range"
+                id="sl_penumbra"
+                min="0"
+                max="1"
+                step="0.05"
+                value="0.2"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700"
+                >位置 Y: <span id="sl_pos_y_val">5.0</span></label
+              >
+              <input
+                type="range"
+                id="sl_pos_y"
+                min="-5"
+                max="10"
+                step="0.1"
+                value="5"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700"
+                >目标 X: <span id="sl_target_x_val">0.0</span></label
+              >
+              <input
+                type="range"
+                id="sl_target_x"
+                min="-10"
+                max="10"
+                step="0.1"
+                value="0"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3D Scene -->
+      <div
+        id="scene-container"
+        class="w-full md:w-2/3 lg:w-3/4 h-1/2 md:h-full relative"
+      >
+        <!-- Canvas will be inserted here -->
+      </div>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      let scene, camera, renderer, controls;
+      let plane, sphere;
+      let pointLight, pointLightHelper;
+      let spotLight, spotLightHelper;
+
+      const sceneContainer = document.getElementById("scene-container");
+
+      function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf1f5f9);
+
+        camera = new THREE.PerspectiveCamera(
+          75,
+          sceneContainer.clientWidth / sceneContainer.clientHeight,
+          0.1,
+          1000
+        );
+        camera.position.set(4, 5, 10);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(
+          sceneContainer.clientWidth,
+          sceneContainer.clientHeight
+        );
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        sceneContainer.appendChild(renderer.domElement);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const planeGeometry = new THREE.PlaneGeometry(20, 20);
+        const planeMaterial = new THREE.MeshStandardMaterial({
+          color: 0x9ca3af,
+          roughness: 0.8,
+        });
+        plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -1;
+        plane.receiveShadow = true;
+        scene.add(plane);
+
+        const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
+        const sphereMaterial = new THREE.MeshStandardMaterial({
+          color: 0x3b82f6,
+          roughness: 0.5,
+          metalness: 0.1,
+        });
+        sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.position.y = 1;
+        sphere.castShadow = true;
+        scene.add(sphere);
+
+        pointLight = new THREE.PointLight(0xffffff, 2, 15, 2);
+        pointLight.position.set(-5, 3, 2);
+        pointLight.castShadow = true;
+        scene.add(pointLight);
+
+        pointLightHelper = new THREE.PointLightHelper(pointLight, 0.5);
+        scene.add(pointLightHelper);
+
+        spotLight = new THREE.SpotLight(0xffcc00, 10, 20, Math.PI / 8, 0.2, 2);
+        spotLight.position.set(5, 5, 2);
+        spotLight.target = sphere;
+        spotLight.castShadow = true;
+        scene.add(spotLight);
+
+        spotLightHelper = new THREE.SpotLightHelper(spotLight);
+        scene.add(spotLightHelper);
+
+        setupEventListeners();
+        animate();
+      }
+
+      function setupEventListeners() {
+        const uiElements = {
+          pl: {
+            enabled: "pl_enabled",
+            color: "pl_color",
+            intensity: "pl_intensity",
+            distance: "pl_distance",
+            decay: "pl_decay",
+            posY: "pl_pos_y",
+          },
+          sl: {
+            enabled: "sl_enabled",
+            color: "sl_color",
+            intensity: "sl_intensity",
+            angle: "sl_angle",
+            penumbra: "sl_penumbra",
+            posY: "sl_pos_y",
+            targetX: "sl_target_x",
+          },
+        };
+
+        const lights = { pl: pointLight, sl: spotLight };
+        const helpers = { pl: pointLightHelper, sl: spotLightHelper };
+
+        ["pl", "sl"].forEach((prefix) => {
+          document
+            .getElementById(uiElements[prefix].enabled)
+            .addEventListener("input", (e) => {
+              lights[prefix].visible = e.target.checked;
+              helpers[prefix].visible = e.target.checked;
+            });
+          document
+            .getElementById(uiElements[prefix].color)
+            .addEventListener("input", (e) =>
+              lights[prefix].color.set(e.target.value)
+            );
+
+          for (const prop of [
+            "intensity",
+            "distance",
+            "decay",
+            "penumbra",
+            "angle",
+          ]) {
+            const el = document.getElementById(`${prefix}_${prop}`);
+            if (el) {
+              el.addEventListener("input", (e) => {
+                const val = parseFloat(e.target.value);
+                document.getElementById(`${prefix}_${prop}_val`).textContent =
+                  val.toFixed(1);
+                if (prop === "angle") {
+                  lights[prefix][prop] = val * (Math.PI / 180);
+                } else {
+                  lights[prefix][prop] = val;
+                }
+              });
+            }
+          }
+
+          const posYEl = document.getElementById(`${prefix}_pos_y`);
+          posYEl.addEventListener("input", (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById(`${prefix}_pos_y_val`).textContent =
+              val.toFixed(1);
+            lights[prefix].position.y = val;
+          });
+        });
+
+        document
+          .getElementById("sl_target_x")
+          .addEventListener("input", (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById("sl_target_x_val").textContent =
+              val.toFixed(1);
+            spotLight.target.position.x = val;
+          });
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        spotLightHelper.update();
+        pointLightHelper.update();
+        renderer.render(scene, camera);
+      }
+
+      function onWindowResize() {
+        camera.aspect =
+          sceneContainer.clientWidth / sceneContainer.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(
+          sceneContainer.clientWidth,
+          sceneContainer.clientHeight
+        );
+      }
+
+      window.addEventListener("resize", onWindowResize);
+
+      init();
+    </script>
+  </body>
+</html>

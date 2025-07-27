@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>交互式 Three.js Group 探索应用</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Warm Neutral (Stone, Amber) -->
+    <!-- Application Structure Plan: A two-panel interactive dashboard. The left panel provides textual context and controls (buttons, sliders) to manipulate the 3D scene. The right panel displays the live Three.js visualization. This structure transforms passive reading into active, hands-on exploration, which is more effective for learning a technical concept like Three.js Groups. Users can directly see the effect of adding/removing objects and transforming the group vs. a single object. -->
+    <!-- Visualization & Content Choices:
+    - Report Info: Concept of Group -> Goal: Inform -> Presentation: Text block -> Justification: Foundational knowledge.
+    - Report Info: add()/remove() methods -> Goal: Demonstrate -> Presentation: Interactive Buttons -> Interaction: Click to add/remove a cube from the group -> Justification: Visually shows the consequence of modifying the group's children.
+    - Report Info: Collective Transform -> Goal: Compare/Change -> Presentation: Sliders & Toggle Switch -> Interaction: Sliders control group's transform properties; Toggle switches animation between group and a single child -> Justification: Allows tangible, real-time exploration of how group transforms affect children, the core benefit.
+    - Report Info: Code Example -> Goal: Demonstrate -> Presentation: Live Three.js Canvas -> Interaction: The entire visualization is the interactive output -> Justification: Shows the end result of the code in an engaging way.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+      }
+      .control-panel {
+        scrollbar-width: thin;
+        scrollbar-color: #a8a29e #f5f5f4;
+      }
+      .control-panel::-webkit-scrollbar {
+        width: 8px;
+      }
+      .control-panel::-webkit-scrollbar-track {
+        background: #f5f5f4;
+      }
+      .control-panel::-webkit-scrollbar-thumb {
+        background-color: #a8a29e;
+        border-radius: 10px;
+        border: 2px solid #f5f5f4;
+      }
+      .slider-thumb::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        background: #f59e0b;
+        cursor: pointer;
+        border-radius: 50%;
+      }
+      .slider-thumb::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        background: #f59e0b;
+        cursor: pointer;
+        border-radius: 50%;
+      }
+    </style>
+  </head>
+  <body class="bg-stone-100 text-stone-800">
+    <div class="flex flex-col md:flex-row w-full h-screen">
+      <!-- Left Panel: Controls and Information -->
+      <div
+        class="w-full md:w-1/3 lg:w-1/4 h-1/2 md:h-full bg-stone-50 shadow-lg overflow-y-auto p-6 control-panel"
+      >
+        <div class="space-y-6">
+          <!-- Section 2: Core Operations -->
+          <section>
+            <h2 class="text-lg font-semibold mb-2">核心操作：添加与移除</h2>
+            <p class="text-sm text-stone-600 mb-3">
+              点击下方按钮，将粉色立方体在“场景”和“群组”之间移动。当它不属于群组时，将不再受“集体变换”滑块的影响，但依然可见。
+            </p>
+            <div class="flex space-x-2">
+              <button
+                id="addBtn"
+                class="px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:bg-stone-300 disabled:cursor-not-allowed"
+              >
+                添加至群组
+              </button>
+              <button
+                id="removeBtn"
+                class="px-4 py-2 text-sm font-medium text-white bg-amber-500 rounded-md hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+              >
+                从群组移除
+              </button>
+            </div>
+          </section>
+
+          <!-- Section 3: Group Transforms -->
+          <section>
+            <h2 class="text-lg font-semibold mb-2">集体变换</h2>
+            <p class="text-sm text-stone-600 mb-3">
+              对群组的变换属性（位置、旋转、缩放）进行操作会影响其所有子对象。拖动下方的滑块，实时控制整个群组。
+            </p>
+            <div class="space-y-4">
+              <div>
+                <label
+                  for="rotationY"
+                  class="block text-sm font-medium text-stone-700"
+                  >Y轴旋转: <span id="rotationYValue">0</span>°</label
+                >
+                <input
+                  id="rotationY"
+                  type="range"
+                  min="-180"
+                  max="180"
+                  value="0"
+                  class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                />
+              </div>
+              <div>
+                <label
+                  for="positionX"
+                  class="block text-sm font-medium text-stone-700"
+                  >X轴位置: <span id="positionXValue">0</span></label
+                >
+                <input
+                  id="positionX"
+                  type="range"
+                  min="-3"
+                  max="3"
+                  value="0"
+                  step="0.1"
+                  class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                />
+              </div>
+              <div>
+                <label
+                  for="scale"
+                  class="block text-sm font-medium text-stone-700"
+                  >整体缩放: <span id="scaleValue">1.0</span></label
+                >
+                <input
+                  id="scale"
+                  type="range"
+                  min="0.2"
+                  max="2"
+                  value="1"
+                  step="0.1"
+                  class="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                />
+              </div>
+            </div>
+          </section>
+
+          <!-- Section 4: Animation Target -->
+          <section>
+            <h2 class="text-lg font-semibold mb-2">变换目标对比</h2>
+            <p class="text-sm text-stone-600 mb-3">
+              切换动画的控制目标，可以清晰地看出变换群组与变换单个对象的区别。
+            </p>
+            <div
+              class="flex items-center justify-between bg-stone-100 p-3 rounded-lg"
+            >
+              <span class="text-sm font-medium">动画目标</span>
+              <div class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="targetToggle" class="sr-only peer" />
+                <div
+                  class="w-11 h-6 bg-stone-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"
+                ></div>
+                <span
+                  id="targetLabel"
+                  class="ml-3 text-sm font-medium text-stone-700"
+                  >群组</span
+                >
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- Right Panel: 3D Canvas -->
+      <div
+        id="canvas-container"
+        class="w-full md:w-2/3 lg:w-3/4 h-1/2 md:h-full flex-grow"
+      >
+        <!-- Canvas will be appended here by Three.js -->
+      </div>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from "three";
+
+      // --- DOM Element Selection ---
+      const canvasContainer = document.getElementById("canvas-container");
+      const addBtn = document.getElementById("addBtn");
+      const removeBtn = document.getElementById("removeBtn");
+      const rotationYSlider = document.getElementById("rotationY");
+      const rotationYValue = document.getElementById("rotationYValue");
+      const positionXSlider = document.getElementById("positionX");
+      const positionXValue = document.getElementById("positionXValue");
+      const scaleSlider = document.getElementById("scale");
+      const scaleValue = document.getElementById("scaleValue");
+      const targetToggle = document.getElementById("targetToggle");
+      const targetLabel = document.getElementById("targetLabel");
+
+      let scene, camera, renderer, group, mainCube, smallCube;
+      let animationTargetIsGroup = true;
+
+      // --- Initialization ---
+      function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1e293b);
+
+        camera = new THREE.PerspectiveCamera(
+          75,
+          canvasContainer.clientWidth / canvasContainer.clientHeight,
+          0.1,
+          1000
+        );
+        camera.position.set(0, 4, 10);
+        camera.lookAt(scene.position);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(
+          canvasContainer.clientWidth,
+          canvasContainer.clientHeight
+        );
+        canvasContainer.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 10, 7.5);
+        scene.add(directionalLight);
+
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+
+        group = new THREE.Group();
+        scene.add(group);
+
+        const mainCubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+        const mainCubeMaterial = new THREE.MeshStandardMaterial({
+          color: 0x34d399,
+          roughness: 0.5,
+        });
+        mainCube = new THREE.Mesh(mainCubeGeometry, mainCubeMaterial);
+        group.add(mainCube); // Main cube always stays in the group
+
+        const smallCubeGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+        const smallCubeMaterial = new THREE.MeshStandardMaterial({
+          color: 0xf472b6,
+          roughness: 0.5,
+        });
+        smallCube = new THREE.Mesh(smallCubeGeometry, smallCubeMaterial);
+        smallCube.position.x = 3;
+        group.add(smallCube); // Start with small cube in the group
+
+        updateButtonState();
+      }
+
+      // --- Event Listeners ---
+      function setupEventListeners() {
+        window.addEventListener("resize", onWindowResize, false);
+
+        addBtn.addEventListener("click", () => {
+          // Use attach to move the object from the scene back to the group, preserving its world transform
+          if (smallCube.parent === scene) {
+            group.attach(smallCube);
+          }
+          updateButtonState();
+        });
+
+        removeBtn.addEventListener("click", () => {
+          // Use attach to move the object from the group to the scene, preserving its world transform
+          if (smallCube.parent === group) {
+            scene.attach(smallCube);
+          }
+          updateButtonState();
+        });
+
+        rotationYSlider.addEventListener("input", (e) => {
+          const degrees = parseFloat(e.target.value);
+          group.rotation.y = THREE.MathUtils.degToRad(degrees);
+          rotationYValue.textContent = degrees.toFixed(0);
+        });
+
+        positionXSlider.addEventListener("input", (e) => {
+          const value = parseFloat(e.target.value);
+          group.position.x = value;
+          positionXValue.textContent = value.toFixed(1);
+        });
+
+        scaleSlider.addEventListener("input", (e) => {
+          const value = parseFloat(e.target.value);
+          group.scale.set(value, value, value);
+          scaleValue.textContent = value.toFixed(1);
+        });
+
+        targetToggle.addEventListener("change", (e) => {
+          animationTargetIsGroup = !e.target.checked;
+          targetLabel.textContent = animationTargetIsGroup
+            ? "群组"
+            : "中心立方体";
+        });
+      }
+
+      // --- Helper Functions ---
+      function updateButtonState() {
+        const isSmallCubeInGroup = smallCube.parent === group;
+        addBtn.disabled = isSmallCubeInGroup;
+        removeBtn.disabled = !isSmallCubeInGroup;
+      }
+
+      function onWindowResize() {
+        camera.aspect =
+          canvasContainer.clientWidth / canvasContainer.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(
+          canvasContainer.clientWidth,
+          canvasContainer.clientHeight
+        );
+      }
+
+      // --- Animation Loop ---
+      function animate() {
+        requestAnimationFrame(animate);
+
+        // Automatic animation part
+        if (!rotationYSlider.matches(":active")) {
+          // Don't animate if user is dragging the slider
+          const time = Date.now() * 0.0005;
+          if (animationTargetIsGroup) {
+            group.rotation.y = time;
+            mainCube.rotation.set(0, 0, 0); // Reset individual rotation
+          } else {
+            group.rotation.y = 0; // Reset group rotation
+            mainCube.rotation.y = time * 2;
+            mainCube.rotation.x = time * 2;
+          }
+          // Keep slider in sync with animation
+          rotationYValue.textContent = (
+            THREE.MathUtils.radToDeg(group.rotation.y) % 360
+          ).toFixed(0);
+          rotationYSlider.value = THREE.MathUtils.radToDeg(group.rotation.y);
+        }
+
+        renderer.render(scene, camera);
+      }
+
+      // --- Run ---
+      init();
+      setupEventListeners();
+      animate();
+    </script>
+  </body>
+</html>

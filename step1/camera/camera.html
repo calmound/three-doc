@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>交互式指南：Three.js 相机</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../../assets//three/three@0.128.0.js"></script>
+    <script src="../../assets//three/OrbitControls.128.js"></script>
+    <!-- Chosen Palette: Warm Neutrals (Slate, Stone, with a Sky blue accent) -->
+    <!-- Application Structure Plan: 采用双栏布局。左栏为控制区，包含相机类型选择、动态参数滑块和实时更新的说明文字。右栏为大型3D渲染视口，显示带有相机助手（CameraHelper）的场景，并辅以一个带清晰标签的画中画（PiP）窗口来展示主相机的实时画面。这种设计将理论（文字说明）与实践（交互控制）及即时视觉反馈（3D视图和PiP）紧密结合，为理解3D相机行为提供比静态文档更高效的交互式学习体验。 -->
+    <!-- Visualization & Content Choices: 报告信息：透视/正交相机的定义与参数。目标：对比并理解参数效果。可视化方法：主视图使用一个带OrbitControls的调试相机来观察场景中的主相机及其CameraHelper。画中画视图展示主相机的输出。交互方式：单选按钮切换相机，滑块实时操控参数。理由：这种主动探索式方法在教授空间/视觉概念方面表现更优。技术栈：Three.js负责渲染，原生JS处理逻辑。 -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+      }
+      .control-panel::-webkit-scrollbar {
+        width: 6px;
+      }
+      .control-panel::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      .control-panel::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border-radius: 3px;
+      }
+      .control-panel::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        outline: none;
+        transition: opacity 0.2s;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background: #3b82f6;
+        cursor: pointer;
+        border-radius: 50%;
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background: #3b82f6;
+        cursor: pointer;
+        border-radius: 50%;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-100 text-slate-800">
+    <div class="flex flex-col w-screen h-screen overflow-hidden md:flex-row">
+      <!-- Left Panel: Controls -->
+      <div
+        class="w-full p-6 overflow-y-auto bg-white shadow-lg md:w-1/3 lg:w-1/4 h-1/2 md:h-full control-panel"
+      >
+        <h1 class="mb-1 text-2xl font-bold text-slate-900">相机交互指南</h1>
+        <p class="mb-6 text-sm text-slate-500">
+          实时调整参数，探索三维世界中的不同视角。
+        </p>
+
+        <!-- Camera Selector -->
+        <div class="mb-6">
+          <h2 class="mb-3 text-lg font-semibold text-slate-800">
+            选择相机类型
+          </h2>
+          <div class="flex items-center space-x-4">
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="radio"
+                name="cameraType"
+                value="perspective"
+                class="w-5 h-5 text-blue-600 form-radio"
+                checked
+              />
+              <span class="ml-2 text-slate-700">透视相机</span>
+            </label>
+            <label class="flex items-center cursor-pointer">
+              <input
+                type="radio"
+                name="cameraType"
+                value="orthographic"
+                class="w-5 h-5 text-blue-600 form-radio"
+              />
+              <span class="ml-2 text-slate-700">正交相机</span>
+            </label>
+          </div>
+        </div>
+
+        <hr class="my-6 border-slate-200" />
+
+        <!-- Dynamic Controls -->
+        <div id="controls-container">
+          <!-- Perspective Controls -->
+          <div id="perspective-controls">
+            <h2 class="mb-4 text-lg font-semibold text-slate-800">
+              透视相机参数
+            </h2>
+            <div class="space-y-4">
+              <div>
+                <label
+                  for="fov"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >视场角 (FOV)
+                  <span id="fov-value" class="font-mono text-blue-600"
+                    >45°</span
+                  ></label
+                >
+                <input
+                  type="range"
+                  id="fov"
+                  min="10"
+                  max="150"
+                  value="45"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="p-near"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >近裁切面 (Near)
+                  <span id="p-near-value" class="font-mono text-blue-600"
+                    >0.1</span
+                  ></label
+                >
+                <input
+                  type="range"
+                  id="p-near"
+                  min="0.1"
+                  max="20"
+                  step="0.1"
+                  value="0.1"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="p-far"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >远裁切面 (Far)
+                  <span id="p-far-value" class="font-mono text-blue-600"
+                    >1000</span
+                  ></label
+                >
+                <input
+                  type="range"
+                  id="p-far"
+                  min="50"
+                  max="2000"
+                  value="1000"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="p-rotation-x"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >X轴旋转 (Pitch)
+                  <span id="p-rotation-x-value" class="font-mono text-blue-600"
+                    >0°</span
+                  ></label
+                >
+                <input
+                  type="range"
+                  id="p-rotation-x"
+                  min="-90"
+                  max="90"
+                  value="0"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="p-rotation-y"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >Y轴旋转 (Yaw)
+                  <span id="p-rotation-y-value" class="font-mono text-blue-600"
+                    >0°</span
+                  ></label
+                >
+                <input
+                  type="range"
+                  id="p-rotation-y"
+                  min="-180"
+                  max="180"
+                  value="0"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="p-rotation-z"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >Z轴旋转 (Roll)
+                  <span id="p-rotation-z-value" class="font-mono text-blue-600"
+                    >0°</span
+                  ></label
+                >
+                <input
+                  type="range"
+                  id="p-rotation-z"
+                  min="-180"
+                  max="180"
+                  value="0"
+                  class="mt-1"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Orthographic Controls -->
+          <div id="orthographic-controls" class="hidden">
+            <h2 class="mb-4 text-lg font-semibold text-slate-800">
+              正交相机参数
+            </h2>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-4">
+              <div>
+                <label
+                  for="o-left"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >左 (Left)
+                  <span id="o-left-value" class="font-mono text-blue-600"></span
+                ></label>
+                <input
+                  type="range"
+                  id="o-left"
+                  min="-20"
+                  max="0"
+                  step="0.1"
+                  value="-5"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="o-right"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >右 (Right)
+                  <span
+                    id="o-right-value"
+                    class="font-mono text-blue-600"
+                  ></span
+                ></label>
+                <input
+                  type="range"
+                  id="o-right"
+                  min="0"
+                  max="20"
+                  step="0.1"
+                  value="5"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="o-bottom"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >下 (Bottom)
+                  <span
+                    id="o-bottom-value"
+                    class="font-mono text-blue-600"
+                  ></span
+                ></label>
+                <input
+                  type="range"
+                  id="o-bottom"
+                  min="-20"
+                  max="0"
+                  step="0.1"
+                  value="-5"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="o-top"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >上 (Top)
+                  <span id="o-top-value" class="font-mono text-blue-600"></span
+                ></label>
+                <input
+                  type="range"
+                  id="o-top"
+                  min="0"
+                  max="20"
+                  step="0.1"
+                  value="5"
+                  class="mt-1"
+                />
+              </div>
+              <div class="col-span-2">
+                <label
+                  for="o-near"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >近 (Near)
+                  <span id="o-near-value" class="font-mono text-blue-600"></span
+                ></label>
+                <input
+                  type="range"
+                  id="o-near"
+                  min="0.1"
+                  max="50"
+                  step="0.1"
+                  value="0.1"
+                  class="mt-1"
+                />
+              </div>
+              <div class="col-span-2">
+                <label
+                  for="o-far"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >远 (Far)
+                  <span id="o-far-value" class="font-mono text-blue-600"></span
+                ></label>
+                <input
+                  type="range"
+                  id="o-far"
+                  min="50"
+                  max="2000"
+                  value="1000"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="o-rotation-x"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >X轴旋转 (Pitch)
+                  <span
+                    id="o-rotation-x-value"
+                    class="font-mono text-blue-600"
+                  ></span
+                ></label>
+                <input
+                  type="range"
+                  id="o-rotation-x"
+                  min="-90"
+                  max="90"
+                  value="0"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="o-rotation-y"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >Y轴旋转 (Yaw)
+                  <span
+                    id="o-rotation-y-value"
+                    class="font-mono text-blue-600"
+                  ></span
+                ></label>
+                <input
+                  type="range"
+                  id="o-rotation-y"
+                  min="-180"
+                  max="180"
+                  value="0"
+                  class="mt-1"
+                />
+              </div>
+              <div>
+                <label
+                  for="o-rotation-z"
+                  class="flex justify-between text-sm font-medium text-slate-600"
+                  >Z轴旋转 (Roll)
+                  <span
+                    id="o-rotation-z-value"
+                    class="font-mono text-blue-600"
+                  ></span
+                ></label>
+                <input
+                  type="range"
+                  id="o-rotation-z"
+                  min="-180"
+                  max="180"
+                  value="0"
+                  class="mt-1"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-6 border-slate-200" />
+
+        <!-- Explanation Area -->
+        <div>
+          <h2 class="mb-3 text-lg font-semibold text-slate-800">概念说明</h2>
+          <div
+            id="explanation-text"
+            class="space-y-2 text-sm leading-relaxed text-slate-600"
+          ></div>
+        </div>
+      </div>
+
+      <!-- Right Panel: 3D Viewport -->
+      <div
+        id="main-viewport"
+        class="relative w-full md:w-2/3 lg:w-3/4 h-1/2 md:h-full"
+      >
+        <canvas id="c" class="block w-full h-full"></canvas>
+        <div
+          id="info-box"
+          class="absolute p-3 font-mono text-xs rounded-lg shadow top-4 left-4 bg-white/80 backdrop-blur-sm text-slate-700"
+        >
+          当前相机:
+          <span id="current-camera-name" class="font-bold">透视相机</span>
+        </div>
+
+        <!-- PiP 标签 -->
+        <div class="absolute pointer-events-none bottom-5 right-5">
+          <div
+            class="px-3 py-1 text-sm font-semibold rounded-md shadow-md bg-white/80 backdrop-blur-sm text-slate-800"
+          >
+            主相机实时画面
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Data for explanations
+      const explanations = {
+        perspective: `
+                <p><strong>透视相机 (PerspectiveCamera)</strong> 模拟人眼的视觉效果，核心特征是“近大远小”。</p>
+                <p>物体距离相机的远近会影响其在渲染图像中的尺寸。它最常用于创建写实的三维场景，如游戏或建筑可视化。</p>
+                <ul class="mt-2 space-y-1 list-disc list-inside">
+                    <li><strong>视场角 (FOV):</strong> 控制视野的广度，类似相机的广角或长焦镜头。</li>
+                    <li><strong>近/远裁切面:</strong> 定义了相机可见的深度范围。只有在此范围内的物体才会被渲染。</li>
+                </ul>
+            `,
+        orthographic: `
+                <p><strong>正交相机 (OrthographicCamera)</strong> 创建一个没有透视效果的视图。</p>
+                <p>所有物体无论远近，都以其原始尺寸渲染。它非常适合工程制图、2D风格游戏或需要精确对齐的UI布局。</p>
+                <ul class="mt-2 space-y-1 list-disc list-inside">
+                    <li><strong>Left/Right/Top/Bottom:</strong> 直接定义了可见区域（视景体）的边界。</li>
+                    <li><strong>近/远裁切面:</strong> 同样定义了渲染的深度范围，但不会影响物体大小。</li>
+                </ul>
+            `,
+      };
+
+      // DOM elements
+      const canvas = document.querySelector("#c");
+      const mainViewport = document.getElementById("main-viewport");
+      const perspectiveControls = document.getElementById(
+        "perspective-controls"
+      );
+      const orthographicControls = document.getElementById(
+        "orthographic-controls"
+      );
+      const explanationText = document.getElementById("explanation-text");
+      const currentCameraName = document.getElementById("current-camera-name");
+
+      // --- Three.js Setup ---
+      let scene, renderer, controls, debugCamera, activeCamera;
+      let perspectiveCamera, orthographicCamera;
+      let pHelper, oHelper, activeHelper;
+      const objects = [];
+
+      function init() {
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf1f5f9);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(mainViewport.clientWidth, mainViewport.clientHeight);
+        renderer.setScissorTest(true);
+        renderer.autoClear = false;
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        directionalLight.position.set(5, 10, 7.5);
+        scene.add(directionalLight);
+
+        // Objects - 创建更有层次感的立方体布局
+        const geometry = new THREE.BoxGeometry(3, 3, 3);
+        const colors = [0x3b82f6, 0x10b981, 0xef4444, 0xf97316, 0x8b5cf6];
+
+        // 前排立方体
+        for (let i = 0; i < 3; i++) {
+          const material = new THREE.MeshStandardMaterial({
+            color: colors[i],
+            metalness: 0.1,
+            roughness: 0.6,
+          });
+          const cube = new THREE.Mesh(geometry, material);
+          cube.position.set(
+            (i - 1) * 6, // x: -6, 0, 6
+            1.5, // y: 立方体底部在地面上
+            -8 // z: 前排
+          );
+          scene.add(cube);
+          objects.push(cube);
+        }
+
+        // 后排立方体
+        for (let i = 0; i < 2; i++) {
+          const material = new THREE.MeshStandardMaterial({
+            color: colors[i + 3],
+            metalness: 0.1,
+            roughness: 0.6,
+          });
+          const cube = new THREE.Mesh(geometry, material);
+          cube.position.set(
+            (i - 0.5) * 6, // x: -3, 3
+            1.5, // y: 立方体底部在地面上
+            -16 // z: 后排
+          );
+          scene.add(cube);
+          objects.push(cube);
+        }
+
+        // Helpers
+        const gridHelper = new THREE.GridHelper(200, 40, 0x94a3b8, 0xcfd8e4);
+        scene.add(gridHelper);
+
+        // Cameras
+        const aspect = mainViewport.clientWidth / mainViewport.clientHeight;
+        // Main controlled cameras - 这些是用户要学习和调整的相机
+        perspectiveCamera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+        perspectiveCamera.position.set(0, 8, 20); // 设置在能看到立方体的位置
+
+        const size = 15;
+        orthographicCamera = new THREE.OrthographicCamera(
+          -size * aspect,
+          size * aspect,
+          size,
+          -size,
+          0.1,
+          1000
+        );
+        orthographicCamera.position.set(0, 8, 20); // 与透视相机相同位置
+
+        // Debug camera to view the scene
+        debugCamera = new THREE.PerspectiveCamera(60, aspect, 0.1, 2000);
+        debugCamera.position.set(50, 40, 80);
+        debugCamera.lookAt(scene.position);
+
+        // Controls for debug camera
+        controls = new THREE.OrbitControls(debugCamera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Camera Helpers
+        pHelper = new THREE.CameraHelper(perspectiveCamera);
+        oHelper = new THREE.CameraHelper(orthographicCamera);
+
+        // Set initial camera
+        activeCamera = perspectiveCamera;
+        activeHelper = pHelper;
+        scene.add(activeHelper);
+        // 让主相机看向立方体的中心区域
+        activeCamera.lookAt(0, 2, -15);
+
+        // 确保正交相机也有正确的朝向
+        orthographicCamera.lookAt(0, 2, -15);
+
+        // Initial UI setup
+        updateControlsFromCamera();
+        updateExplanation();
+
+        // Start animation loop
+        animate();
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        activeHelper.update();
+
+        // Since autoClear is off, we must clear manually.
+        renderer.clear();
+
+        // 先渲染主视图
+        renderer.setViewport(
+          0,
+          0,
+          mainViewport.clientWidth,
+          mainViewport.clientHeight
+        );
+        renderer.setScissor(
+          0,
+          0,
+          mainViewport.clientWidth,
+          mainViewport.clientHeight
+        );
+        renderer.setScissorTest(true);
+        renderer.setClearColor(0xf1f5f9, 1.0);
+        renderer.render(scene, debugCamera);
+
+        // 然后渲染 PiP 视图（在主视图之上）
+        const SCREEN_WIDTH = renderer.domElement.clientWidth;
+        const SCREEN_HEIGHT = renderer.domElement.clientHeight;
+
+        // PiP 视口尺寸和位置（右下角）
+        const PIP_WIDTH = Math.floor(SCREEN_WIDTH * 0.25); // 25% 宽度
+        const PIP_HEIGHT = Math.floor(PIP_WIDTH * 0.75); // 4:3 比例
+        const PIP_LEFT = SCREEN_WIDTH - PIP_WIDTH - 20; // 右边距 20px
+        const PIP_BOTTOM = 20; // 底边距 20px
+
+        // 设置 PiP 视口和裁剪区域
+        renderer.setViewport(PIP_LEFT, PIP_BOTTOM, PIP_WIDTH, PIP_HEIGHT);
+        renderer.setScissor(PIP_LEFT, PIP_BOTTOM, PIP_WIDTH, PIP_HEIGHT);
+
+        // 设置 PiP 背景色并清除该区域
+        renderer.setClearColor(0xf8fafc, 1.0);
+        renderer.clear(true, true, false);
+
+        // 调整相机宽高比
+        const originalAspect = activeCamera.aspect;
+        activeCamera.aspect = PIP_WIDTH / PIP_HEIGHT;
+        activeCamera.updateProjectionMatrix();
+
+        // 隐藏相机助手，避免在 PiP 中显示
+        const helperVisible = activeHelper.visible;
+        activeHelper.visible = false;
+
+        // 渲染 PiP 场景
+        renderer.render(scene, activeCamera);
+
+        // 恢复设置
+        activeHelper.visible = helperVisible;
+        activeCamera.aspect = originalAspect;
+        activeCamera.updateProjectionMatrix();
+      }
+
+      function updateControlsFromCamera() {
+        // Perspective
+        const fov = document.getElementById("fov");
+        const pNear = document.getElementById("p-near");
+        const pFar = document.getElementById("p-far");
+        const pRotationX = document.getElementById("p-rotation-x");
+        const pRotationY = document.getElementById("p-rotation-y");
+        const pRotationZ = document.getElementById("p-rotation-z");
+        fov.value = perspectiveCamera.fov;
+        pNear.value = perspectiveCamera.near;
+        pFar.value = perspectiveCamera.far;
+        pRotationX.value = 0; // 初始旋转为0
+        pRotationY.value = 0;
+        pRotationZ.value = 0;
+        document.getElementById("fov-value").textContent = `${parseFloat(
+          fov.value
+        ).toFixed(0)}°`;
+        document.getElementById("p-near-value").textContent = parseFloat(
+          pNear.value
+        ).toFixed(1);
+        document.getElementById("p-far-value").textContent = parseFloat(
+          pFar.value
+        ).toFixed(0);
+        document.getElementById(
+          "p-rotation-x-value"
+        ).textContent = `${parseFloat(pRotationX.value).toFixed(0)}°`;
+        document.getElementById(
+          "p-rotation-y-value"
+        ).textContent = `${parseFloat(pRotationY.value).toFixed(0)}°`;
+        document.getElementById(
+          "p-rotation-z-value"
+        ).textContent = `${parseFloat(pRotationZ.value).toFixed(0)}°`;
+
+        // Orthographic
+        const oLeft = document.getElementById("o-left");
+        const oRight = document.getElementById("o-right");
+        const oTop = document.getElementById("o-top");
+        const oBottom = document.getElementById("o-bottom");
+        const oNear = document.getElementById("o-near");
+        const oFar = document.getElementById("o-far");
+        const oRotationX = document.getElementById("o-rotation-x");
+        const oRotationY = document.getElementById("o-rotation-y");
+        const oRotationZ = document.getElementById("o-rotation-z");
+        const aspect = mainViewport.clientWidth / mainViewport.clientHeight;
+        const size = 15; // 使用与初始化时相同的尺寸
+        oLeft.value = -size * aspect;
+        oRight.value = size * aspect;
+        oTop.value = size;
+        oBottom.value = -size;
+        oNear.value = orthographicCamera.near;
+        oFar.value = orthographicCamera.far;
+        oRotationX.value = 0; // 初始旋转为0
+        oRotationY.value = 0;
+        oRotationZ.value = 0;
+        document.getElementById("o-left-value").textContent = parseFloat(
+          oLeft.value
+        ).toFixed(1);
+        document.getElementById("o-right-value").textContent = parseFloat(
+          oRight.value
+        ).toFixed(1);
+        document.getElementById("o-top-value").textContent = parseFloat(
+          oTop.value
+        ).toFixed(1);
+        document.getElementById("o-bottom-value").textContent = parseFloat(
+          oBottom.value
+        ).toFixed(1);
+        document.getElementById("o-near-value").textContent = parseFloat(
+          oNear.value
+        ).toFixed(1);
+        document.getElementById("o-far-value").textContent = parseFloat(
+          oFar.value
+        ).toFixed(0);
+        document.getElementById(
+          "o-rotation-x-value"
+        ).textContent = `${parseFloat(oRotationX.value).toFixed(0)}°`;
+        document.getElementById(
+          "o-rotation-y-value"
+        ).textContent = `${parseFloat(oRotationY.value).toFixed(0)}°`;
+        document.getElementById(
+          "o-rotation-z-value"
+        ).textContent = `${parseFloat(oRotationZ.value).toFixed(0)}°`;
+      }
+
+      function updateExplanation() {
+        const selectedType = document.querySelector(
+          'input[name="cameraType"]:checked'
+        ).value;
+        explanationText.innerHTML = explanations[selectedType];
+        currentCameraName.textContent =
+          selectedType === "perspective" ? "透视相机" : "正交相机";
+      }
+
+      // --- Event Listeners ---
+      function setupEventListeners() {
+        // Camera type change
+        document
+          .querySelectorAll('input[name="cameraType"]')
+          .forEach((radio) => {
+            radio.addEventListener("change", (e) => {
+              const type = e.target.value;
+              scene.remove(activeHelper);
+              if (type === "perspective") {
+                activeCamera = perspectiveCamera;
+                activeHelper = pHelper;
+                perspectiveControls.classList.remove("hidden");
+                orthographicControls.classList.add("hidden");
+              } else {
+                activeCamera = orthographicCamera;
+                activeHelper = oHelper;
+                perspectiveControls.classList.add("hidden");
+                orthographicControls.classList.remove("hidden");
+              }
+              scene.add(activeHelper);
+              // 让切换后的相机看向立方体的中心区域
+              activeCamera.lookAt(0, 2, -15);
+              updateExplanation();
+            });
+          });
+
+        // Perspective controls
+        document.getElementById("fov").addEventListener("input", (e) => {
+          perspectiveCamera.fov = parseFloat(e.target.value);
+          document.getElementById("fov-value").textContent = `${parseFloat(
+            e.target.value
+          ).toFixed(0)}°`;
+          perspectiveCamera.updateProjectionMatrix();
+        });
+        document.getElementById("p-near").addEventListener("input", (e) => {
+          perspectiveCamera.near = parseFloat(e.target.value);
+          document.getElementById("p-near-value").textContent = parseFloat(
+            e.target.value
+          ).toFixed(1);
+          perspectiveCamera.updateProjectionMatrix();
+        });
+        document.getElementById("p-far").addEventListener("input", (e) => {
+          perspectiveCamera.far = parseFloat(e.target.value);
+          document.getElementById("p-far-value").textContent = parseFloat(
+            e.target.value
+          ).toFixed(0);
+          perspectiveCamera.updateProjectionMatrix();
+        });
+        // 透视相机旋转控制
+        document
+          .getElementById("p-rotation-x")
+          .addEventListener("input", (e) => {
+            const rotation = parseFloat(e.target.value);
+            document.getElementById(
+              "p-rotation-x-value"
+            ).textContent = `${rotation.toFixed(0)}°`;
+            perspectiveCamera.rotation.x = THREE.MathUtils.degToRad(rotation);
+          });
+        document
+          .getElementById("p-rotation-y")
+          .addEventListener("input", (e) => {
+            const rotation = parseFloat(e.target.value);
+            document.getElementById(
+              "p-rotation-y-value"
+            ).textContent = `${rotation.toFixed(0)}°`;
+            perspectiveCamera.rotation.y = THREE.MathUtils.degToRad(rotation);
+          });
+        document
+          .getElementById("p-rotation-z")
+          .addEventListener("input", (e) => {
+            const rotation = parseFloat(e.target.value);
+            document.getElementById(
+              "p-rotation-z-value"
+            ).textContent = `${rotation.toFixed(0)}°`;
+            perspectiveCamera.rotation.z = THREE.MathUtils.degToRad(rotation);
+          });
+
+        // Orthographic controls
+        const orthoInputs = [
+          "o-left",
+          "o-right",
+          "o-top",
+          "o-bottom",
+          "o-near",
+          "o-far",
+        ];
+        const orthoProps = ["left", "right", "top", "bottom", "near", "far"];
+        orthoInputs.forEach((id, index) => {
+          document.getElementById(id).addEventListener("input", (e) => {
+            const prop = orthoProps[index];
+            const value = parseFloat(e.target.value);
+            orthographicCamera[prop] = value;
+            const valueSpan = document.getElementById(`${id}-value`);
+            if (prop === "far") {
+              valueSpan.textContent = value.toFixed(0);
+            } else {
+              valueSpan.textContent = value.toFixed(1);
+            }
+            orthographicCamera.updateProjectionMatrix();
+          });
+        });
+
+        // 正交相机旋转控制
+        document
+          .getElementById("o-rotation-x")
+          .addEventListener("input", (e) => {
+            const rotation = parseFloat(e.target.value);
+            document.getElementById(
+              "o-rotation-x-value"
+            ).textContent = `${rotation.toFixed(0)}°`;
+            orthographicCamera.rotation.x = THREE.MathUtils.degToRad(rotation);
+          });
+        document
+          .getElementById("o-rotation-y")
+          .addEventListener("input", (e) => {
+            const rotation = parseFloat(e.target.value);
+            document.getElementById(
+              "o-rotation-y-value"
+            ).textContent = `${rotation.toFixed(0)}°`;
+            orthographicCamera.rotation.y = THREE.MathUtils.degToRad(rotation);
+          });
+        document
+          .getElementById("o-rotation-z")
+          .addEventListener("input", (e) => {
+            const rotation = parseFloat(e.target.value);
+            document.getElementById(
+              "o-rotation-z-value"
+            ).textContent = `${rotation.toFixed(0)}°`;
+            orthographicCamera.rotation.z = THREE.MathUtils.degToRad(rotation);
+          });
+
+        // Window resize
+        window.addEventListener("resize", onWindowResize);
+      }
+
+      function onWindowResize() {
+        const aspect = mainViewport.clientWidth / mainViewport.clientHeight;
+
+        debugCamera.aspect = aspect;
+        debugCamera.updateProjectionMatrix();
+
+        perspectiveCamera.aspect = aspect;
+        perspectiveCamera.updateProjectionMatrix();
+
+        const size = 15; // 使用与初始化时相同的尺寸
+        orthographicCamera.left = -size * aspect;
+        orthographicCamera.right = size * aspect;
+        orthographicCamera.top = size;
+        orthographicCamera.bottom = -size;
+        orthographicCamera.updateProjectionMatrix();
+
+        renderer.setSize(mainViewport.clientWidth, mainViewport.clientHeight);
+      }
+
+      // --- Start Application ---
+      init();
+      setupEventListeners();
+    </script>
+  </body>
+</html>

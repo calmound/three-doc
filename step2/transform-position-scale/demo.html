@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 位置与缩放示例</title>
+    <style>
+      body {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      // 1. 初始化场景
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xf0f0f0);
+
+      // 2. 初始化相机
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(5, 5, 10); // 将相机向后移动，以便观察场景
+
+      // 3. 初始化渲染器
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // 4. 添加坐标轴辅助器
+      const axesHelper = new THREE.AxesHelper(5); // 辅助线长度为5
+      scene.add(axesHelper);
+
+      // 5. 创建几何体和材质
+      const geometry = new THREE.BoxGeometry(1, 1, 1); // 创建一个 1x1x1 的立方体几何体
+
+      // 创建参照物（红色立方体）
+      const materialRef = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        wireframe: true,
+      });
+      const referenceCube = new THREE.Mesh(geometry, materialRef);
+      // 参照物位于世界坐标原点 (0,0,0)，缩放为 (1,1,1)
+      scene.add(referenceCube);
+
+      // 创建变换对象（蓝色立方体）
+      const materialTransformed = new THREE.MeshBasicMaterial({
+        color: 0x0000ff,
+      });
+      const transformedCube = new THREE.Mesh(geometry, materialTransformed);
+
+      // --- 核心操作：修改位置和缩放 ---
+
+      // (A) 设置位置
+      // 将物体沿 X 轴正方向移动 3 个单位，沿 Y 轴正方向移动 2 个单位
+      transformedCube.position.set(3, 2, 0);
+
+      // (B) 设置缩放
+      // 将物体在 X 轴方向放大 1.5 倍，Y 轴方向缩小至 0.5 倍，Z 轴方向不变
+      transformedCube.scale.set(1.5, 0.5, 1);
+
+      // 将变换后的立方体添加到场景中
+      scene.add(transformedCube);
+
+      // 6. 添加轨道控制器
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+
+      // 7. 渲染循环
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update(); // 更新控制器
+        renderer.render(scene, camera);
+      }
+
+      animate();
+
+      // 8. 窗口自适应
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    </script>
+  </body>
+</html>

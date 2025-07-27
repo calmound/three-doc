@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Three.js Scene 纯数据操作示例</title>
+  </head>
+  <body>
+    <p>这是一个空白页面。请打开浏览器的开发者控制台 (F12) 查看代码输出。</p>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.165.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module">
+      // 导入 Three.js 库
+      import * as THREE from "three";
+
+      // 1. 创建一个空的场景对象
+      // scene 的本质是一个容器
+      const scene = new THREE.Scene();
+      console.log("1. 初始化的空场景:", scene);
+
+      // 2. 创建一些内容用于添加到场景中
+      // 这里仅用最基础的 Object3D 作为示例对象
+      const object1 = new THREE.Object3D();
+      const object2 = new THREE.Object3D();
+
+      // 为便于在控制台观察，给对象命名
+      object1.name = "对象A";
+      object2.name = "对象B";
+
+      // 3. 使用 .add() 方法将两个对象添加到场景中
+      scene.add(object1, object2);
+      console.log("2. 添加对象后的场景:", scene);
+      console.log("   场景的 .children 数组:", scene.children);
+
+      // 4. 使用 .remove() 方法将 '对象A' 移出场景
+      scene.remove(object1);
+      console.log("3. 移除一个对象后的场景:", scene);
+      console.log("   场景的 .children 数组:", scene.children);
+
+      // 5. 演示 .background 属性的设置
+      // 即使没有渲染，scene 的属性依然可以被赋值和读取
+      scene.background = new THREE.Color(0x0000ff); // 设置为蓝色
+      console.log("4. 设置背景属性后的场景:", scene);
+    </script>
+  </body>
+</html>

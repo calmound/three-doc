@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 点光源与聚光灯示例</title>
+    <style>
+      body {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      // 1. 初始化场景、相机和渲染器
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(4, 5, 10);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      // 开启阴影渲染
+      renderer.shadowMap.enabled = true;
+      document.body.appendChild(renderer.domElement);
+
+      // 2. 添加轨道控制器
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+
+      // 3. 创建基础物体（一个平面和一个球体）
+      const planeGeometry = new THREE.PlaneGeometry(20, 20);
+      const planeMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+      const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+      plane.rotation.x = -Math.PI / 2;
+      plane.position.y = -1;
+      // 平面接收阴影
+      plane.receiveShadow = true;
+      scene.add(plane);
+
+      const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
+      const sphereMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8888ff,
+      });
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      sphere.position.y = 1;
+      // 球体投射阴影
+      sphere.castShadow = true;
+      scene.add(sphere);
+
+      // 4. 创建点光源 (PointLight)
+      const pointLight = new THREE.PointLight(0xffffff, 2, 15, 2);
+      pointLight.position.set(-5, 3, 2);
+      // 点光源投射阴影
+      pointLight.castShadow = true;
+      scene.add(pointLight);
+
+      // 添加点光源辅助对象，用于可视化光源位置和范围
+      const pointLightHelper = new THREE.PointLightHelper(pointLight, 0.5);
+      scene.add(pointLightHelper);
+
+      // 5. 创建聚光灯 (SpotLight)
+      const spotLight = new THREE.SpotLight(
+        0xffcc00,
+        10,
+        20,
+        Math.PI / 8,
+        0.2,
+        2
+      );
+      spotLight.position.set(5, 5, 2);
+      // 聚光灯默认指向 (0,0,0)，此处我们让它指向球体
+      spotLight.target = sphere;
+      // 聚光灯投射阴影
+      spotLight.castShadow = true;
+      scene.add(spotLight);
+
+      // 添加聚光灯辅助对象，用于可视化光锥
+      const spotLightHelper = new THREE.SpotLightHelper(spotLight);
+      scene.add(spotLightHelper);
+
+      // 6. 动画循环
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        // 聚光灯辅助对象需要手动更新
+        spotLightHelper.update();
+        renderer.render(scene, camera);
+      }
+
+      // 7. 响应窗口大小变化
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      animate();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Three.js</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="./index.css"
+    />
+  <body>
+    <div id="app">正在加载文档...</div>
+    <script>
+      window.$docsify = {
+        name: "Three.js课程",
+        repo: "",
+        loadSidebar: true,
+        loadNavbar: false,
+        coverpage: false,
+        auto2top: true,
+        maxLevel: 4,
+        subMaxLevel: 3,
+        search: {
+          maxAge: 86400000,
+          paths: "auto",
+          placeholder: "搜索文档...",
+          noData: "没有找到结果",
+          depth: 4,
+        },
+        copyCode: {
+          buttonText: "复制",
+          errorText: "复制失败",
+          successText: "已复制",
+        },
+        pagination: {
+          previousText: "上一页",
+          nextText: "下一页",
+          crossChapter: true,
+          crossChapterText: true,
+        },
+      };
+    </script>
+    <!-- Docsify 核心 -->
+    <script src="./assets/docsify.js"></script>
+    <!-- 搜索插件 -->
+    <script src="./assets/search.min.js"></script>
+    <!-- 代码复制插件 -->
+    <script src="./assets/docsify-copy-code.js"></script>
+    <!-- 分页插件 -->
+    <script src="./assets/pagination.js"></script>
+    <!-- 代码高亮 -->
+    <!-- <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-css.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-html.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script> -->
+  </body>
+</html>

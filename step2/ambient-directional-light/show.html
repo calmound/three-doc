@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 交互式光源实验室：环境光与平行光</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <!-- Chosen Palette: Slate & Blue -->
+    <!-- Application Structure Plan: A two-column "lab" layout is used. The left column is a control panel for manipulating AmbientLight and DirectionalLight properties. The right column is a 3D viewport showing the real-time effects. This side-by-side structure is optimal for learning as it directly links abstract parameters to their visual results, enabling hands-on experimentation. The user can scroll through the controls on the left while the 3D scene remains visible. -->
+    <!-- Visualization & Content Choices: The core concept is explaining light parameters. Goal: Compare & Understand. Method: The primary visualization is the Three.js canvas. Interactive controls (HTML sliders, color pickers) dynamically update the properties of `AmbientLight` and `DirectionalLight`. For DirectionalLight, a `DirectionalLightHelper` is used to visualize its position and direction. This provides direct, immediate feedback. Justification: This interactive lab format is more effective for teaching a visual API like Three.js than static text or charts because it fosters learning through direct manipulation and observation. Library: Three.js for rendering, Vanilla JS for interactivity. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+      }
+      .control-panel {
+        scrollbar-width: thin;
+        scrollbar-color: #9ca3af #f1f5f9;
+      }
+      .control-panel::-webkit-scrollbar {
+        width: 8px;
+      }
+      .control-panel::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      .control-panel::-webkit-scrollbar-thumb {
+        background-color: #9ca3af;
+        border-radius: 10px;
+        border: 2px solid #f1f5f9;
+      }
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 9999px;
+        outline: none;
+        cursor: pointer;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        background: #3b82f6;
+        cursor: pointer;
+        border-radius: 50%;
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        background: #3b82f6;
+        cursor: pointer;
+        border-radius: 50%;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-100 text-slate-800">
+    <div
+      id="app"
+      class="flex flex-col md:flex-row w-screen h-screen overflow-hidden"
+    >
+      <!-- Control Panel -->
+      <div
+        class="control-panel w-full md:w-1/3 lg:w-1/4 h-1/2 md:h-full bg-slate-50 p-4 overflow-y-auto shadow-lg"
+      >
+        <!-- AmbientLight Controls -->
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+          <h2 class="text-lg font-semibold text-slate-800 mb-2">
+            环境光 (AmbientLight)
+          </h2>
+          <p class="text-xs text-slate-600 mb-4">
+            一种无特定方向的光源，均匀照亮场景中的所有物体，提供基础亮度。它无法产生阴影。
+          </p>
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between items-center text-sm">
+                <label for="al_enabled" class="font-medium text-slate-700"
+                  >启用光源</label
+                >
+                <input
+                  type="checkbox"
+                  id="al_enabled"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked
+                />
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between items-center text-sm">
+                <label for="al_color" class="font-medium text-slate-700"
+                  >颜色</label
+                >
+                <input
+                  type="color"
+                  id="al_color"
+                  value="#404040"
+                  class="p-0.5 h-6 w-10 border border-slate-300 rounded-md"
+                />
+              </div>
+            </div>
+            <div>
+              <label
+                for="al_intensity"
+                class="block text-sm font-medium text-slate-700"
+                >强度: <span id="al_intensity_val">0.5</span></label
+              >
+              <input
+                type="range"
+                id="al_intensity"
+                min="0"
+                max="2"
+                step="0.1"
+                value="0.5"
+                class="w-full"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- DirectionalLight Controls -->
+        <div class="bg-white p-4 rounded-lg shadow">
+          <h2 class="text-lg font-semibold text-slate-800 mb-2">
+            平行光 (DirectionalLight)
+          </h2>
+          <p class="text-xs text-slate-600 mb-4">
+            模拟远距离光源（如太阳），沿特定方向发射平行光线。它是产生阴影的主要光源。
+          </p>
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between items-center text-sm">
+                <label for="dl_enabled" class="font-medium text-slate-700"
+                  >启用光源</label
+                >
+                <input
+                  type="checkbox"
+                  id="dl_enabled"
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked
+                />
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between items-center text-sm">
+                <label for="dl_color" class="font-medium text-slate-700"
+                  >颜色</label
+                >
+                <input
+                  type="color"
+                  id="dl_color"
+                  value="#ffffff"
+                  class="p-0.5 h-6 w-10 border border-slate-300 rounded-md"
+                />
+              </div>
+            </div>
+            <div>
+              <label
+                for="dl_intensity"
+                class="block text-sm font-medium text-slate-700"
+                >强度: <span id="dl_intensity_val">1.0</span></label
+              >
+              <input
+                type="range"
+                id="dl_intensity"
+                min="0"
+                max="5"
+                step="0.1"
+                value="1"
+                class="w-full"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700"
+                >位置 X: <span id="dl_pos_x_val">5.0</span></label
+              >
+              <input
+                type="range"
+                id="dl_pos_x"
+                min="-20"
+                max="20"
+                step="0.5"
+                value="5"
+                class="w-full"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700"
+                >位置 Y: <span id="dl_pos_y_val">10.0</span></label
+              >
+              <input
+                type="range"
+                id="dl_pos_y"
+                min="1"
+                max="20"
+                step="0.5"
+                value="10"
+                class="w-full"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700"
+                >位置 Z: <span id="dl_pos_z_val">7.5</span></label
+              >
+              <input
+                type="range"
+                id="dl_pos_z"
+                min="-20"
+                max="20"
+                step="0.5"
+                value="7.5"
+                class="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3D Scene -->
+      <div
+        id="scene-container"
+        class="w-full md:w-2/3 lg:w-3/4 h-1/2 md:h-full relative"
+      >
+        <!-- Canvas will be inserted here -->
+      </div>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      let scene, camera, renderer, controls;
+      let ambientLight, directionalLight, directionalLightHelper;
+
+      const sceneContainer = document.getElementById("scene-container");
+
+      function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf1f5f9);
+
+        camera = new THREE.PerspectiveCamera(
+          75,
+          sceneContainer.clientWidth / sceneContainer.clientHeight,
+          0.1,
+          1000
+        );
+        camera.position.set(6, 6, 12);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(
+          sceneContainer.clientWidth,
+          sceneContainer.clientHeight
+        );
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        sceneContainer.appendChild(renderer.domElement);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        const planeGeometry = new THREE.PlaneGeometry(30, 30);
+        const planeMaterial = new THREE.MeshStandardMaterial({
+          color: 0x9ca3af,
+          roughness: 0.8,
+        });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.y = -1;
+        plane.receiveShadow = true;
+        scene.add(plane);
+
+        // Add multiple shapes
+        const sphereGeometry = new THREE.SphereGeometry(1, 32, 32);
+        const sphereMaterial = new THREE.MeshStandardMaterial({
+          color: 0x3b82f6,
+          roughness: 0.5,
+          metalness: 0.1,
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.position.set(-3, 1, 0);
+        sphere.castShadow = true;
+        scene.add(sphere);
+
+        const boxGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+        const boxMaterial = new THREE.MeshStandardMaterial({
+          color: 0x10b981,
+          roughness: 0.5,
+          metalness: 0.1,
+        });
+        const box = new THREE.Mesh(boxGeometry, boxMaterial);
+        box.position.set(0, 0.75 - 1, 0);
+        box.castShadow = true;
+        scene.add(box);
+
+        const torusGeometry = new THREE.TorusGeometry(1, 0.4, 16, 100);
+        const torusMaterial = new THREE.MeshStandardMaterial({
+          color: 0xf97316,
+          roughness: 0.5,
+          metalness: 0.1,
+        });
+        const torus = new THREE.Mesh(torusGeometry, torusMaterial);
+        torus.position.set(3, 1 - 1, 0);
+        torus.rotation.x = Math.PI / 2;
+        torus.castShadow = true;
+        scene.add(torus);
+
+        // Lights
+        ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 10, 7.5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.camera.top = 10;
+        directionalLight.shadow.camera.bottom = -10;
+        directionalLight.shadow.camera.left = -10;
+        directionalLight.shadow.camera.right = 10;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 50;
+        scene.add(directionalLight);
+
+        directionalLightHelper = new THREE.DirectionalLightHelper(
+          directionalLight,
+          2
+        );
+        scene.add(directionalLightHelper);
+
+        setupEventListeners();
+        animate();
+      }
+
+      function setupEventListeners() {
+        // Ambient Light Controls
+        document.getElementById("al_enabled").addEventListener("input", (e) => {
+          ambientLight.visible = e.target.checked;
+        });
+        document.getElementById("al_color").addEventListener("input", (e) => {
+          ambientLight.color.set(e.target.value);
+        });
+        document
+          .getElementById("al_intensity")
+          .addEventListener("input", (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById("al_intensity_val").textContent =
+              val.toFixed(1);
+            ambientLight.intensity = val;
+          });
+
+        // Directional Light Controls
+        document.getElementById("dl_enabled").addEventListener("input", (e) => {
+          directionalLight.visible = e.target.checked;
+          directionalLightHelper.visible = e.target.checked;
+        });
+        document.getElementById("dl_color").addEventListener("input", (e) => {
+          directionalLight.color.set(e.target.value);
+        });
+        document
+          .getElementById("dl_intensity")
+          .addEventListener("input", (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById("dl_intensity_val").textContent =
+              val.toFixed(1);
+            directionalLight.intensity = val;
+          });
+        document.getElementById("dl_pos_x").addEventListener("input", (e) => {
+          const val = parseFloat(e.target.value);
+          document.getElementById("dl_pos_x_val").textContent = val.toFixed(1);
+          directionalLight.position.x = val;
+        });
+        document.getElementById("dl_pos_y").addEventListener("input", (e) => {
+          const val = parseFloat(e.target.value);
+          document.getElementById("dl_pos_y_val").textContent = val.toFixed(1);
+          directionalLight.position.y = val;
+        });
+        document.getElementById("dl_pos_z").addEventListener("input", (e) => {
+          const val = parseFloat(e.target.value);
+          document.getElementById("dl_pos_z_val").textContent = val.toFixed(1);
+          directionalLight.position.z = val;
+        });
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        directionalLightHelper.update();
+        renderer.render(scene, camera);
+      }
+
+      function onWindowResize() {
+        camera.aspect =
+          sceneContainer.clientWidth / sceneContainer.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(
+          sceneContainer.clientWidth,
+          sceneContainer.clientHeight
+        );
+      }
+
+      window.addEventListener("resize", onWindowResize);
+
+      init();
+    </script>
+  </body>
+</html>
